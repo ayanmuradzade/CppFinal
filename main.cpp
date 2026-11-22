@@ -1,12 +1,12 @@
-
 #include <iostream>
 #include <string>
 #include <iomanip>
 #include <vector>
 #include <limits>
+#include <fstream>
 using namespace std;
 
-// ==================== DRINK CLASS ====================
+// ==================== DRINK ====================
 
 class Drink {
 private:
@@ -39,7 +39,7 @@ public:
     }
 };
 
-// ==================== INGREDIENT CLASS ====================
+// ==================== INGREDIENT ====================
 
 class Ingredient {
 private:
@@ -71,7 +71,7 @@ public:
     }
 };
 
-// ==================== INVENTORY CLASS ====================
+// ==================== INVENTORY ====================
 
 class Inventory {
 private:
@@ -220,9 +220,10 @@ public:
     }
 };
 
-// ==================== ORDER STRUCT ====================
+// ==================== ORDER ====================
 
-struct Order {
+class Order {
+public:
     string drinkName;
     string customizations;
     double totalPrice;
@@ -231,7 +232,68 @@ struct Order {
     double change;
 };
 
-// ==================== INPUT FUNCTIONS ====================
+// ==================== ORDER HISTORY FILE HANDLING ====================
+
+const string ORDER_HISTORY_FILE = "order_history.txt";
+
+void saveOrderHistory(const vector<Order> &orderHistory) {
+    ofstream file(ORDER_HISTORY_FILE);
+
+    if (!file.is_open()) {
+        cout << "Error: Could not save order history!" << endl;
+        return;
+    }
+
+    for (const Order &order : orderHistory) {
+        file << quoted(order.drinkName) << " "
+             << quoted(order.customizations) << " "
+             << order.totalPrice << " "
+             << order.totalCalories << " "
+             << order.payment << " "
+             << order.change << endl;
+    }
+
+    file.close();
+}
+
+void loadOrderHistory(vector<Order> &orderHistory) {
+    ifstream file(ORDER_HISTORY_FILE);
+
+    if (!file.is_open()) {
+        // The file will be created automatically when the first order is saved.
+        return;
+    }
+
+    Order order;
+
+    while (file >> quoted(order.drinkName)
+                >> quoted(order.customizations)
+                >> order.totalPrice
+                >> order.totalCalories
+                >> order.payment
+                >> order.change) {
+        orderHistory.push_back(order);
+    }
+
+    file.close();
+}
+
+void clearOrderHistory(vector<Order> &orderHistory) {
+    char confirmation;
+
+    cout << "Are you sure you want to delete all order history? (y/n): ";
+    cin >> confirmation;
+
+    if (confirmation == 'y' || confirmation == 'Y') {
+        orderHistory.clear();
+        saveOrderHistory(orderHistory);
+        cout << "Order history cleared successfully!" << endl;
+    } else {
+        cout << "Operation cancelled. Order history was not changed." << endl;
+    }
+}
+
+// ==================== INPUT VALİDATİON ====================
 
 int getInt(string message, int minValue, int maxValue) {
     int value;
@@ -548,6 +610,7 @@ void processOrder(const Drink menu[], Inventory &inventory,
     newOrder.change = change;
 
     orderHistory.push_back(newOrder);
+    saveOrderHistory(orderHistory);
 
     cout << "\nYour coffee is being prepared..." << endl;
     cout << "Enjoy your coffee!" << endl;
@@ -577,7 +640,7 @@ void clientInterface(const Drink menu[], Inventory &inventory,
 // ==================== ADMIN INTERFACE ====================
 
 void adminInterface(Inventory &inventory,
-                    const vector<Order> &orderHistory) {
+                    vector<Order> &orderHistory) {
 
     const string ADMIN_PASSWORD = "admin123";
     string password;
@@ -601,9 +664,10 @@ void adminInterface(Inventory &inventory,
         cout << "2. Restock Ingredient" << endl;
         cout << "3. View Order History" << endl;
         cout << "4. View Sales Statistics" << endl;
+        cout << "5. Clear Order History" << endl;
         cout << "0. Return to Main Menu" << endl;
 
-        choice = getInt("Enter your choice: ", 0, 4);
+        choice = getInt("Enter your choice: ", 0, 5);
 
         switch (choice) {
             case 1:
@@ -640,6 +704,10 @@ void adminInterface(Inventory &inventory,
                 displaySalesStatistics(orderHistory);
                 break;
 
+            case 5:
+                clearOrderHistory(orderHistory);
+                break;
+
             case 0:
                 cout << "Leaving Admin Interface..." << endl;
                 break;
@@ -666,6 +734,7 @@ int main() {
     Inventory inventory;
 
     vector<Order> orderHistory;
+    loadOrderHistory(orderHistory);
 
     int choice;
 
